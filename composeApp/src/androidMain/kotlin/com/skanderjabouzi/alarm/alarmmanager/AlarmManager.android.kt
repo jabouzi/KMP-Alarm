@@ -142,7 +142,7 @@ actual object AlarmHelper{
                                 .setUsage(AudioAttributes.USAGE_ALARM)
                                 .build()
                         )
-                        isLooping = true
+                        isLooping = false
                         prepare()
                         start()
                     } catch (e: Exception) {
