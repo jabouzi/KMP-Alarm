@@ -1,5 +1,7 @@
 package com.skanderjabouzi.alarm
 
+import alarm_app.composeapp.generated.resources.Res
+import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,6 +11,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.tooling.preview.Preview
 import com.skanderjabouzi.alarm.alarmmanager.rememberExactAlarmPermissionController
 import com.skanderjabouzi.alarm.alarmmanager.rememberNotificationPermissionController
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.ExperimentalResourceApi
 
 class AppActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,6 +21,7 @@ class AppActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             NotificationPermissionRequest()
+            TestAudioRwarning()
             App()
         }
     }
@@ -24,6 +30,21 @@ class AppActivity : ComponentActivity() {
 @Preview
 @Composable
 fun AppPreview() { App() }
+
+@SuppressLint("CoroutineCreationDuringComposition")
+@OptIn(ExperimentalResourceApi::class)
+@Composable
+fun TestAudioRwarning() {
+    // This is a placeholder for the audio warning test.
+    // You can implement your audio warning logic here.
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) {
+        scope.launch {
+            val bytes = Res.readBytes("files/athan.mp3")
+            println("Audio file size: ${bytes.size} bytes")
+        }
+    }
+}
 
 @Composable
 fun NotificationPermissionRequest() {

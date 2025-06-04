@@ -1,5 +1,6 @@
 package com.skanderjabouzi.alarm.alarmmanager
 
+import alarm_app.composeapp.generated.resources.Res
 import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.NotificationChannel
@@ -7,18 +8,26 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.res.AssetFileDescriptor
 import android.media.AudioAttributes
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.skanderjabouzi.alarm.AlarmReceiver
 import com.skanderjabouzi.alarm.AppActivity
+import kotlinx.coroutines.CoroutineScope
+import org.jetbrains.compose.resources.ExperimentalResourceApi
 import java.util.*
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import java.io.File
 
 @SuppressLint("StaticFieldLeak")
-actual object AlarmHelper {
+actual object AlarmHelper{
     private val context: Context = application.applicationContext
     private const val CHANNEL_ID = "alarm_channel"
     private const val NOTIFICATION_ID = 1
@@ -110,33 +119,41 @@ actual object AlarmHelper {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
     }
 
+    @OptIn(ExperimentalResourceApi::class)
     @SuppressLint("DiscouragedApi")
     actual fun playAlarmSound() {
-        if (mediaPlayer == null) {
-            mediaPlayer = MediaPlayer().apply {
-                try {
-                    val afd = context.resources.openRawResourceFd(
-                        context.resources.getIdentifier("athan", "mp3", context.packageName)
-                    )
-                    setDataSource(afd.fileDescriptor, afd.startOffset, afd.length)
-                    afd.close()
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                            .setUsage(AudioAttributes.USAGE_ALARM)
-                            .build()
-                    )
-                    isLooping = true
-                    prepare()
-                    start()
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    // Handle error
-                }
+        runBlocking {
+            val bytes = Res.readBytes("files/athan.mp3")
+
+            // Create a temporary file
+            val tempFile = File.createTempFile("temp_audio", ".mp3").apply {
+                deleteOnExit()
+                writeBytes(bytes)
             }
-        } else {
-            if (!mediaPlayer!!.isPlaying) {
-                mediaPlayer!!.start()
+
+            if (mediaPlayer == null) {
+                mediaPlayer = MediaPlayer().apply {
+                    try {
+                        setDataSource(tempFile.absolutePath.toString())
+                        setVolume(0.5f, 0.5f)
+                        setAudioAttributes(
+                            AudioAttributes.Builder()
+                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                                .setUsage(AudioAttributes.USAGE_ALARM)
+                                .build()
+                        )
+                        isLooping = true
+                        prepare()
+                        start()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        println("Error playing alarm sound: ${e.message}")
+                    }
+                }
+            } else {
+                if (!mediaPlayer!!.isPlaying) {
+                    mediaPlayer!!.start()
+                }
             }
         }
     }

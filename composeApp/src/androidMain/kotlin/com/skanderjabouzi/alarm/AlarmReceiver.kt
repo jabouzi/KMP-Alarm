@@ -17,7 +17,7 @@ class AlarmReceiver : BroadcastReceiver() {
         wl.acquire(1*60*1000L /*10 minutes*/)
         Toast.makeText(context, "Alarm !!!!!!!!!!", Toast.LENGTH_LONG).show()
         AlarmHelper.showNotification()
-        //AlarmHelper.playAlarmSound()
+        AlarmHelper.playAlarmSound()
         wl.release()
     }
 }
