@@ -1,45 +1,29 @@
 package com.skanderjabouzi.alarm.alarmmanager
 
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.ObjCAction
+import platform.AVFAudio.AVAudioPlayer
+import platform.AVFAudio.AVAudioSession
+import platform.AVFAudio.AVAudioSessionCategoryPlayback
+import platform.AVFAudio.setActive
+import platform.Foundation.NSBundle
 import platform.Foundation.NSDateComponents
+import platform.Foundation.NSNotification
+import platform.Foundation.NSNotificationCenter
+import platform.Foundation.NSSelectorFromString
+import platform.UIKit.UIApplicationDidBecomeActiveNotification
 import platform.UserNotifications.UNCalendarNotificationTrigger
 import platform.UserNotifications.UNMutableNotificationContent
 import platform.UserNotifications.UNNotificationRequest
 import platform.UserNotifications.UNNotificationSound
 import platform.UserNotifications.UNUserNotificationCenter
+import platform.darwin.NSObject
 
 actual object AlarmHelper {
+    private val notificationIdentifier = "alarmNotification"
+    private var audioPlayer: AVAudioPlayer? = null
+
     actual fun setAlarm(hour: Int, minute: Int) {
-
-        /*
-
-        let content = UNMutableNotificationContent()
-        content.title = "Wake me up"
-        content.body = "Every Monday at 1pm"
-        content.sound = UNNotificationSound(named: UNNotificationSoundName("alert.caf"))
-
-        // Configure the recurring date.
-        var dateComponents = DateComponents()
-        dateComponents.calendar = Calendar.current
-
-        dateComponents.weekday = 2  // Monday
-        dateComponents.hour = 13    // 13:00 hours
-
-        // Create the trigger as a repeating event.
-        let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
-
-        // Create the request
-        let uuidString = UUID().uuidString
-        let request = UNNotificationRequest(identifier: uuidString, content: content, trigger: trigger)
-
-        // Schedule the request with the system.
-        let notificationCenter = UNUserNotificationCenter.current()
-        notificationCenter.add(request) { (error) in
-  if error != nil {
-    // Handle any errors.
-  }
-}
-
-         */
         val content = UNMutableNotificationContent()
         content.setTitle("Alarm!")
         content.setBody("Time to wake up!")
@@ -52,7 +36,7 @@ actual object AlarmHelper {
 
         val trigger = UNCalendarNotificationTrigger.triggerWithDateMatchingComponents(dateInfo, repeats = false)
 
-        val request = UNNotificationRequest.requestWithIdentifier("alarmNotification", content, trigger)
+        val request = UNNotificationRequest.requestWithIdentifier(notificationIdentifier, content, trigger)
 
         UNUserNotificationCenter.currentNotificationCenter().addNotificationRequest(request) { error ->
             if (error != null) {
@@ -65,7 +49,58 @@ actual object AlarmHelper {
 
     actual fun cancelAlarm() {
         UNUserNotificationCenter.currentNotificationCenter()
-            .removePendingNotificationRequestsWithIdentifiers(listOf("alarmNotification"))
+            .removePendingNotificationRequestsWithIdentifiers(listOf(notificationIdentifier))
         println("Alarm cancelled")
+    }
+
+    @OptIn(ExperimentalForeignApi::class)
+    actual fun playAlarmSound() {
+        val audioSession = AVAudioSession.sharedInstance()
+        audioSession.setCategory(AVAudioSessionCategoryPlayback, error = null)
+        audioSession.setActive(true, error = null)
+
+        val soundURL = NSBundle.mainBundle.URLForResource(
+            "athan", withExtension = "mp3"
+        ) // Replace with your sound file
+        if (soundURL != null) {
+            audioPlayer = AVAudioPlayer(contentsOfURL = soundURL, error = null)
+            audioPlayer?.numberOfLoops = -1 // Loop indefinitely
+            audioPlayer?.prepareToPlay()
+            audioPlayer?.play()
+        } else {
+            println("Error: Could not find sound file.")
+        }
+    }
+
+    actual fun stopAlarmSound() {
+        audioPlayer?.stop()
+        audioPlayer = null
+    }
+
+    fun applicationDidBecomeActive() {
+        // Resume playing the full sound if the app becomes active while the alarm is going off
+        if (audioPlayer?.isPlaying() == false) {
+            playAlarmSound()
+        }
+    }
+}
+
+class iOSAppLifeCycleObserver : NSObject() {
+    @Suppress("unused")
+    @ObjCAction
+    fun applicationDidBecomeActive(notification: NSNotification) {
+        AlarmHelper.applicationDidBecomeActive()
+    }
+
+    companion object {
+        @OptIn(ExperimentalForeignApi::class)
+        fun startObserving() {
+            NSNotificationCenter.defaultCenter().addObserver(
+                observer = iOSAppLifeCycleObserver(),
+                selector = NSSelectorFromString("applicationDidBecomeActive:"),
+                name = UIApplicationDidBecomeActiveNotification,
+                `object` = null
+            )
+        }
     }
 }

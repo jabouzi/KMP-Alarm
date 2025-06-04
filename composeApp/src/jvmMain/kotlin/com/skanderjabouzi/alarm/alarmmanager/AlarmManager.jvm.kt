@@ -6,4 +6,10 @@ actual object AlarmHelper {
 
     actual fun cancelAlarm() {
     }
+
+    actual fun playAlarmSound() {
+    }
+
+    actual fun stopAlarmSound() {
+    }
 }
